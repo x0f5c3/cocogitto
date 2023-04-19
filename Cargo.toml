@@ -59,6 +59,7 @@ cmd_lib = "1.3.0"
 [features]
 default = ["cli"]
 cli = ["clap", "clap_complete", "clap_mangen", "clap_complete_nushell"]
+vendored = ["git2/vendored-libgit2"]
 
 [lib]
 name = "cocogitto"
@@ -66,7 +67,7 @@ path = "src/lib.rs"
 
 [[bin]]
 name = "cog"
-required-features = ["clap", "clap_complete", "clap_mangen"]
+required-features = ["cli"]
 
 [[test]]
 name = "all"
