@@ -11,7 +11,7 @@ pack() {
 
     tempdir=$(mktemp -d 2>/dev/null || mktemp -d -t tmp)
     out_dir=$(pwd)
-    package_name="$PROJECT_NAME-${GITHUB_REF/refs\/tags\//}-$TARGET"
+    package_name="$PROJECT_NAME-$TARGET"
 
     if [[ $TARGET == "aarch64-unknown-linux-gnu" ]]; then
         gcc_prefix="aarch64-linux-gnu-"
@@ -25,7 +25,7 @@ pack() {
         extension=""
     fi
 
-    mkdir "$tempdir/$package_name"
+    mkdir -p "$tempdir/$package_name"
 
     cp "target/$TARGET/release/$PROJECT_NAME$extension" "$tempdir/$package_name/"
 
