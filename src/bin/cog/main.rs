@@ -3,21 +3,23 @@ mod mangen;
 
 use std::fs;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 use cocogitto::conventional::changelog::template::{RemoteContext, Template};
 use cocogitto::conventional::commit as conv_commit;
 use cocogitto::conventional::version::IncrementCommand;
-use cocogitto::git::hook::HookKind;
 use cocogitto::git::revspec::RevspecPattern;
 use cocogitto::log::filter::{CommitFilter, CommitFilters};
 use cocogitto::log::output::Output;
-use cocogitto::{CocoGitto, SETTINGS};
+use cocogitto::{CocoGitto, CommitHook, SETTINGS};
 
+use crate::commit::prepare_edit_message;
 use anyhow::{bail, Context, Result};
 use clap::builder::{PossibleValue, PossibleValuesParser};
 use clap::{ArgAction, ArgGroup, Args, CommandFactory, Parser, Subcommand, ValueEnum};
 use clap_complete::{shells, Generator};
 use clap_complete_nushell::Nushell;
+use cocogitto::settings::GitHookType;
 
 fn hook_profiles() -> PossibleValuesParser {
     let profiles = SETTINGS
@@ -26,6 +28,15 @@ fn hook_profiles() -> PossibleValuesParser {
         .map(|profile| -> &str { profile });
 
     profiles.into()
+}
+
+fn git_hook_types() -> PossibleValuesParser {
+    let hooks = SETTINGS
+        .git_hooks
+        .keys()
+        .map(|hook_type| hook_type.to_string());
+
+    hooks.into()
 }
 
 fn packages() -> PossibleValuesParser {
@@ -105,7 +116,7 @@ impl ValueEnum for Shell {
 #[derive(Parser)]
 #[command(
     version,
-    name = "Cog",
+    name = "cog",
     author = "Paul D. <paul.delafosse@protonmail.com>"
 )]
 struct Cli {
@@ -270,6 +281,10 @@ enum Command {
         /// Dry-run: print the target version. No action taken
         #[arg(short, long)]
         dry_run: bool,
+
+        /// Specify a "Skip CI" string to append to the end of the commit
+        #[arg(long = "skip-ci")]
+        skip_ci: Option<String>,
     },
 
     /// Install cog config files
@@ -282,8 +297,11 @@ enum Command {
     /// Add git hooks to the repository
     InstallHook {
         /// Type of hook to install
-        #[arg(value_parser = ["commit-msg", "pre-push", "all"])]
-        hook_type: String,
+        #[arg(value_parser = git_hook_types(),  group = "git-hooks")]
+        hook_type: Vec<String>,
+        /// Install all git-hooks
+        #[arg(short, long, group = "git-hooks")]
+        all: bool,
     },
 
     /// Generate shell completions
@@ -344,6 +362,7 @@ fn main() -> Result<()> {
             package,
             annotated,
             dry_run,
+            skip_ci,
         } => {
             let mut cocogitto = CocoGitto::get()?;
             let is_monorepo = !SETTINGS.packages.is_empty();
@@ -378,6 +397,7 @@ fn main() -> Result<()> {
                             hook_profile.as_deref(),
                             annotated,
                             dry_run,
+                            skip_ci,
                         )?
                     }
                     None => cocogitto.create_monorepo_version(
@@ -386,6 +406,7 @@ fn main() -> Result<()> {
                         hook_profile.as_deref(),
                         annotated,
                         dry_run,
+                        skip_ci,
                     )?,
                 }
             } else {
@@ -395,6 +416,7 @@ fn main() -> Result<()> {
                     hook_profile.as_deref(),
                     annotated,
                     dry_run,
+                    skip_ci,
                 )?
             }
         }
@@ -510,7 +532,10 @@ fn main() -> Result<()> {
                 Template::default()
             };
 
-            let pattern = pattern.as_deref().map(RevspecPattern::from);
+            let pattern = pattern
+                .as_deref()
+                .map(RevspecPattern::from_str)
+                .transpose()?;
 
             let result = match at {
                 Some(at) => cocogitto.get_changelog_at_tag(&at, template)?,
@@ -524,14 +549,19 @@ fn main() -> Result<()> {
         Command::Init { path } => {
             cocogitto::command::init::init(&path)?;
         }
-        Command::InstallHook { hook_type } => {
+        Command::InstallHook {
+            hook_type: hook_types,
+            all,
+        } => {
             let cocogitto = CocoGitto::get()?;
-            match hook_type.as_str() {
-                "commit-msg" => cocogitto.install_hook(HookKind::PrepareCommit)?,
-                "pre-push" => cocogitto.install_hook(HookKind::PrePush)?,
-                "all" => cocogitto.install_hook(HookKind::All)?,
-                _ => unreachable!(),
-            }
+            if all {
+                cocogitto.install_all_hooks()?;
+                return Ok(());
+            };
+
+            let hook_types = hook_types.into_iter().map(GitHookType::from).collect();
+
+            cocogitto.install_git_hooks(hook_types)?;
         }
         Command::GenerateCompletions { shell } => {
             clap_complete::generate(shell, &mut Cli::command(), "cog", &mut std::io::stdout());
@@ -548,13 +578,24 @@ fn main() -> Result<()> {
             sign,
         }) => {
             let cocogitto = CocoGitto::get()?;
+            cocogitto.run_commit_hook(CommitHook::PreCommit)?;
+            let commit_message_path = cocogitto.prepare_edit_message_path();
+            let template = prepare_edit_message(
+                &typ,
+                &message,
+                scope.as_deref(),
+                breaking_change,
+                &commit_message_path,
+            )?;
+            cocogitto.run_commit_hook(CommitHook::PrepareCommitMessage(template))?;
+
             let (body, footer, breaking) = if edit {
-                commit::edit_message(&typ, &message, scope.as_deref(), breaking_change)?
+                commit::edit_message(&commit_message_path, breaking_change)?
             } else {
                 (None, None, breaking_change)
             };
-
             cocogitto.conventional_commit(&typ, scope, message, body, footer, breaking, sign)?;
+            cocogitto.run_commit_hook(CommitHook::PostCommit)?;
         }
     }
 

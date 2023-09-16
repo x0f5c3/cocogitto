@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 use std::fmt::{self, Formatter};
 
-use crate::conventional::error::ConventionalCommitError;
+pub use crate::conventional::error::ConventionalCommitError;
 use crate::SETTINGS;
 use chrono::{NaiveDateTime, Utc};
 use colored::*;
@@ -21,12 +21,15 @@ pub struct Commit {
 #[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
 pub struct CommitConfig {
     pub changelog_title: String,
+    #[serde(default)]
+    pub omit_from_changelog: bool,
 }
 
 impl CommitConfig {
     pub(crate) fn new(changelog_title: &str) -> Self {
         CommitConfig {
             changelog_title: changelog_title.to_string(),
+            omit_from_changelog: false,
         }
     }
 }
@@ -85,6 +88,13 @@ impl Commit {
         } else {
             &self.oid
         }
+    }
+
+    pub(crate) fn should_omit(&self) -> bool {
+        SETTINGS
+            .commit_types()
+            .get(&self.message.commit_type)
+            .map_or(false, |config| config.omit_from_changelog)
     }
 
     pub fn get_log(&self) -> String {
@@ -244,7 +254,7 @@ pub(crate) fn format_summary(commit: &ConventionalCommit) -> String {
 
 #[cfg(test)]
 mod test {
-    use crate::conventional::commit::{format_summary, verify, Commit};
+    use crate::conventional::commit::{format_summary, verify, Commit, CommitConfig};
 
     use chrono::NaiveDateTime;
     use cmd_lib::run_fun;
@@ -438,6 +448,36 @@ mod test {
 
         // Assert
         assert_that!(summary).is_equal_to("fix: this is the message".to_string());
+    }
+
+    #[test]
+    fn should_toggle_changelog_omission() {
+        // Arrange
+        let mut config = CommitConfig::new("Omittable Changes");
+
+        // Assert
+        assert!(
+            !&config.omit_from_changelog,
+            "expected CommitConfig::omit_from_changelog to be falsy unless explicitly set"
+        );
+
+        // Act
+        config.omit_from_changelog = true;
+
+        // Assert
+        assert!(
+            &config.omit_from_changelog,
+            "CommitConfig::omit_from_changelog should be truthy after calling CommitConfig::omit"
+        );
+
+        // Act
+        config.omit_from_changelog = false;
+
+        // Assert
+        assert!(
+            !&config.omit_from_changelog,
+            "CommitConfig::omit_from_changelog should be falsy after calling CommitConfig::include"
+        );
     }
 
     #[sealed_test]

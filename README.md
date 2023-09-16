@@ -28,7 +28,7 @@
       src="https://img.shields.io/github/license/cocogitto/cocogitto"
       alt="Repository license"
   /></a>
-  <a href="https://discord.gg/951009223121195021">
+  <a href="https://discord.gg/WeZRdhtuf6">
     <img alt="Discord logo" src="https://img.shields.io/discord/951009223121195021?color=blue&logo=discord">
   </a>
 
@@ -144,7 +144,7 @@ cog commit feat "add awesome feature"
 git commit -m "feat: add awesome feature"
 ```
 
-See [User guide -> Conventional commits](https://docs.cocogitto.io/coco_guide/#conventional-commits).
+See [User guide -> Conventional commits](https://docs.cocogitto.io/guide/#conventional-commits).
 
 ## Auto-bumps
 
@@ -222,7 +222,7 @@ Output :
 - add integration test - (bae629c) - *oknozor*
 ```
 
-See [User guide -> Changelogs](https://docs.cocogitto.io/cog_guide/#changelogs).
+See [User guide -> Changelogs](https://docs.cocogitto.io/guide/#changelogs).
 
 ## GitHub integration
 

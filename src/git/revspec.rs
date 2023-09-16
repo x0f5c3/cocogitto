@@ -1,7 +1,8 @@
 use std::fmt;
 use std::fmt::Formatter;
+use std::str::FromStr;
 
-use git2::{Commit, ErrorCode, Oid};
+use git2::{Commit, DescribeFormatOptions, DescribeOptions, ErrorCode, Oid};
 
 use crate::conventional::changelog::release::Release;
 use crate::git::error::Git2Error;
@@ -31,27 +32,27 @@ impl fmt::Display for RevspecPattern {
     }
 }
 
-impl From<&str> for RevspecPattern {
-    fn from(value: &str) -> Self {
-        if !value.contains("..") {
-            panic!("Invalid commit range pattern: '{value}'");
+impl FromStr for RevspecPattern {
+    type Err = Git2Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if let Some((from, to)) = s.split_once("..") {
+            let from = if from.is_empty() {
+                None
+            } else {
+                Some(from.to_string())
+            };
+
+            let to = if to.is_empty() {
+                None
+            } else {
+                Some(to.to_string())
+            };
+
+            Ok(RevspecPattern { from, to })
+        } else {
+            Err(Git2Error::InvalidCommitRangePattern(s.to_string()))
         }
-
-        let split = value.split("..").collect::<Vec<&str>>();
-
-        let from = if split[0].is_empty() {
-            None
-        } else {
-            Some(split[0].to_string())
-        };
-
-        let to = if split[1].is_empty() {
-            None
-        } else {
-            Some(split[1].to_string())
-        };
-
-        RevspecPattern { from, to }
     }
 }
 
@@ -131,7 +132,7 @@ impl Repository {
         target: &Oid,
     ) -> Result<Release<'a>, Git2Error> {
         let pattern = format!("..{}", release.from);
-        let pattern = RevspecPattern::from(pattern.as_str());
+        let pattern = RevspecPattern::from_str(pattern.as_str())?;
         let range = self.get_commit_range(&pattern)?;
 
         let target_in_range = range.commits.iter().any(|commit| commit.id() == *target);
@@ -346,46 +347,12 @@ impl Repository {
     fn get_latest_tag_starting_from(&self, starting_point: Oid) -> Result<Tag, Git2Error> {
         let starting_point = self.0.find_commit(starting_point)?;
         let starting_point = starting_point.parent(0)?;
-        let first_commit = self.get_first_commit()?;
-        let mut revwalk = self.0.revwalk()?;
-        let range = format!("{}..{}", first_commit, starting_point.id());
-
-        revwalk.push_range(&range)?;
-        let mut range = vec![];
-        for oid in revwalk {
-            range.push(oid?);
-        }
-
-        let mut tags = vec![];
-        self.0
-            .tag_foreach(|mut oid, name| {
-                let name = String::from_utf8_lossy(name);
-                let name = name.as_ref().strip_prefix("refs/tags/").unwrap();
-
-                // If this is an annotated tag, find the first parent commit
-                if self.0.revparse_single(name).unwrap().as_commit().is_none() {
-                    if let Some(commit) = self
-                        .0
-                        .revparse_single([name, "^{}"].concat().as_str())
-                        .unwrap()
-                        .as_commit()
-                    {
-                        oid = commit.id();
-                    }
-                };
-
-                if range.contains(&oid) {
-                    if let Ok(tag) = Tag::from_str(name, Some(oid)) {
-                        tags.push(tag);
-                    };
-                };
-                true
-            })
-            .expect("Unable to walk tags");
-
-        let latest_tag: Option<Tag> = tags.into_iter().max();
-
-        latest_tag.ok_or(Git2Error::NoTagFound)
+        let describe = starting_point
+            .as_object()
+            .describe(DescribeOptions::new().describe_tags())?;
+        let tag_name = describe.format(Some(DescribeFormatOptions::new().abbreviated_size(0)))?;
+        let tag_oid = self.0.refname_to_id(&format!("refs/tags/{tag_name}")).ok();
+        Tag::from_str(&tag_name, tag_oid).map_err(|_| Git2Error::NoTagFound)
     }
 }
 
@@ -399,6 +366,7 @@ mod test {
     use speculoos::prelude::*;
     use std::collections::HashMap;
     use std::path::PathBuf;
+    use std::str::FromStr;
 
     use crate::git::oid::OidOf;
     use crate::git::repository::Repository;
@@ -409,42 +377,49 @@ mod test {
     const COCOGITTO_REPOSITORY: &str = env!("CARGO_MANIFEST_DIR");
 
     #[test]
-    fn convert_str_to_pattern_to() {
-        let pattern = RevspecPattern::from("..1.0.0");
+    fn convert_str_to_pattern_to() -> Result<()> {
+        let pattern = RevspecPattern::from_str("..1.0.0")?;
 
         assert_that!(pattern.from).is_none();
         assert_that!(pattern.to)
             .is_some()
             .is_equal_to("1.0.0".to_string());
+        Ok(())
     }
 
     #[test]
-    fn convert_str_to_pattern_from() {
-        let pattern = RevspecPattern::from("1.0.0..");
+    fn convert_str_to_pattern_from() -> Result<()> {
+        let pattern = RevspecPattern::from_str("1.0.0..")?;
 
         assert_that!(pattern.from)
             .is_some()
             .is_equal_to("1.0.0".to_string());
-        assert_that!(pattern.to).is_none()
+        assert_that!(pattern.to).is_none();
+        Ok(())
     }
 
     #[test]
-    fn convert_empty_pattern() {
-        let pattern = RevspecPattern::from("..");
+    fn convert_empty_pattern() -> Result<()> {
+        let pattern = RevspecPattern::from_str("..")?;
 
         assert_that!(pattern.from).is_none();
-        assert_that!(pattern.to).is_none()
+        assert_that!(pattern.to).is_none();
+        Ok(())
     }
 
     #[test]
-    #[should_panic(expected = "Invalid commit range pattern: '1.0.0'")]
-    fn panic_invalid_pattern() {
-        let _ = RevspecPattern::from("1.0.0");
+    fn error_invalid_pattern() {
+        let result = RevspecPattern::from_str("1.0.0");
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "invalid commit range pattern: `1.0.0`\n"
+        );
     }
 
     #[test]
-    fn convert_full_pattern() {
-        let pattern = RevspecPattern::from("1.0.0..2.0.0");
+    fn convert_full_pattern() -> Result<()> {
+        let pattern = RevspecPattern::from_str("1.0.0..2.0.0")?;
 
         assert_that!(pattern.from)
             .is_some()
@@ -452,6 +427,7 @@ mod test {
         assert_that!(pattern.to)
             .is_some()
             .is_equal_to("2.0.0".to_string());
+        Ok(())
     }
 
     #[test]
@@ -474,7 +450,7 @@ mod test {
         let format_version = |release: &Release| format!("{}", release.version);
 
         // Act
-        let release = repo.get_release_range(RevspecPattern::from("0.32.1..0.32.3"))?;
+        let release = repo.get_release_range(RevspecPattern::from_str("0.32.1..0.32.3")?)?;
 
         // Assert
         assert_that!(format_version(&release)).is_equal_to("0.32.3".to_string());
@@ -520,7 +496,7 @@ mod test {
 
         repo.commit("feat: a commit", false)?;
 
-        let commit_range = repo.get_commit_range(&RevspecPattern::from("..1.0.0"))?;
+        let commit_range = repo.get_commit_range(&RevspecPattern::from_str("..1.0.0")?)?;
 
         assert_that!(commit_range.from).is_equal_to(OidOf::Other(start));
         assert_that!(commit_range.to.to_string()).is_equal_to("1.0.0".to_string());
@@ -563,9 +539,9 @@ mod test {
         )?;
 
         let commit_range_package =
-            repo.get_commit_range_for_package(&RevspecPattern::from("..HEAD"), "one")?;
+            repo.get_commit_range_for_package(&RevspecPattern::from_str("..HEAD")?, "one")?;
         let commit_range_global =
-            repo.get_commit_range_for_monorepo_global(&RevspecPattern::from("..HEAD"))?;
+            repo.get_commit_range_for_monorepo_global(&RevspecPattern::from_str("..HEAD")?)?;
 
         assert_that!(commit_range_package.commits).has_length(1);
         assert_that!(commit_range_global.commits).has_length(1);
@@ -592,7 +568,7 @@ mod test {
         )?;
 
         // Act
-        let commit_range = repo.get_commit_range(&RevspecPattern::from("..1.0.0"))?;
+        let commit_range = repo.get_commit_range(&RevspecPattern::from_str("..1.0.0")?)?;
 
         // Assert
         assert_that!(commit_range.from).is_equal_to(OidOf::Other(start));
@@ -611,7 +587,7 @@ mod test {
         let v3_0_0 = OidOf::Tag(Tag::from_str("3.0.0", Some(v3_0_0))?);
 
         // Act
-        let range = repo.get_commit_range(&RevspecPattern::from("1.0.0..3.0.0"))?;
+        let range = repo.get_commit_range(&RevspecPattern::from_str("1.0.0..3.0.0")?)?;
 
         // Assert
         assert_that!(range.from).is_equal_to(v1_0_0);
@@ -639,7 +615,7 @@ mod test {
         let v1_0_0 = OidOf::Tag(Tag::from_str("1.0.0", Some(v1_0_0))?);
 
         // Act
-        let range = repo.get_commit_range(&RevspecPattern::from("1.0.0.."))?;
+        let range = repo.get_commit_range(&RevspecPattern::from_str("1.0.0..")?)?;
 
         // Assert
         assert_that!(range.from).is_equal_to(v1_0_0);
@@ -684,7 +660,7 @@ mod test {
         let v3_0_0 = OidOf::Tag(Tag::from_str("3.0.0", Some(v3_0_0))?);
 
         // Act
-        let range = repo.get_commit_range(&RevspecPattern::from("..3.0.0"))?;
+        let range = repo.get_commit_range(&RevspecPattern::from_str("..3.0.0")?)?;
 
         // Assert
         assert_that!(range.from).is_equal_to(v2_1_1);
@@ -706,7 +682,7 @@ mod test {
         };
 
         // Act
-        let mut release = repo.get_release_range(RevspecPattern::from(".."))?;
+        let mut release = repo.get_release_range(RevspecPattern::from_str("..")?)?;
         let mut count = 0;
 
         while let Some(previous) = release.previous {
@@ -750,7 +726,7 @@ mod test {
         let pattern = format!("{}..", &from[0..7]);
 
         // Act
-        let release = repo.get_release_range(RevspecPattern::from(pattern.as_str()))?;
+        let release = repo.get_release_range(RevspecPattern::from_str(pattern.as_str())?)?;
 
         // Assert
         let oids: Vec<String> = release
@@ -795,7 +771,7 @@ mod test {
         let pattern = format!("{}..", &from[0..7]);
 
         // Act
-        let release = repo.get_release_range(RevspecPattern::from(pattern.as_str()))?;
+        let release = repo.get_release_range(RevspecPattern::from_str(pattern.as_str())?)?;
 
         // Assert
         let head_to_v1: Vec<String> = release

@@ -1,4 +1,7 @@
-branch_whitelist = [ "main" ]
+# A list of glob patterns describing branches on which semver bump are allowed
+branch_whitelist = ["main"]
+
+# Ignore merge commits from conventional commit checks
 ignore_merge_commits = true
 
 # A list of command to run BEFORE creating a version.
@@ -31,6 +34,25 @@ post_bump_hooks = [
     "echo 'we are done'"
 ]
 
+# Shareable git-hooks, can be installed using `cog install-hook --all`
+# or alternatively `cog install-hooks {commit_hook_type}
+[git_hooks.commit-msg]
+script = """#!/bin/sh
+set -e
+
+echo "[Check current commit message]"
+cog verify --file $1
+
+echo "[Conventional commit check]"
+cog check
+
+echo "[Format code]"
+cargo fmt -v --all --check
+
+echo "[Lints]"
+cargo clippy
+"""
+
 # An optional list of additional allowed commit type
 # `cog commit {commit_type}` commit command will be generated at runtime
 [commit_types]
@@ -42,6 +64,7 @@ template = "remote"
 remote = "github.com"
 repository = "cocogitto"
 owner = "cocogitto"
+
 # Optional contributor list
 # intended to map git signature to remote username
 # and generate changelog links to their remote profiles
@@ -63,5 +86,6 @@ authors = [
     { signature = "Luca Trevisani", username = "lucatrv" },
     { signature = "Racci", username = "DaRacci" },
     { signature = "Conrad Hoffmann", username = "bitfehler" },
-    { signature = "andre161292", username = "andre161292" }
+    { signature = "andre161292", username = "andre161292" },
+    { signature = "Sanchith Hegde", username = "SanchithHegde" }
 ]

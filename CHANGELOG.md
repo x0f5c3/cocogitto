@@ -2,6 +2,72 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [5.5.0](https://github.com/cocogitto/cocogitto/compare/5.4.0..5.5.0) - 2023-08-17
+#### Documentation
+- **(README)** fix links to cocogitto docs - ([d62a83c](https://github.com/cocogitto/cocogitto/commit/d62a83c5613dc51a5b8201a0d2747493f148a758)) - [@lukehsiao](https://github.com/lukehsiao)
+- update cog.toml example and contributing guidelines - ([ee09f87](https://github.com/cocogitto/cocogitto/commit/ee09f87c8b76b616279894d75c88b3400cf87762)) - [@oknozor](https://github.com/oknozor)
+#### Features
+- **(bump)** option to specify skip-ci pattern for bump commit - ([92736aa](https://github.com/cocogitto/cocogitto/commit/92736aaea536916b0650c6a26176bb1e23b7fa18)) - Wassim Ahmed-Belkacem
+- implement `TryFrom` support for `Settings` for `String` and `&Repository` - ([b2d36aa](https://github.com/cocogitto/cocogitto/commit/b2d36aa39d37bf6491fe3074ada401480d7832a6)) - Mark S
+#### Miscellaneous Chores
+- **(compat)** make `SettingError` public - ([3e86732](https://github.com/cocogitto/cocogitto/commit/3e8673257dd7510cfe42dbe731e9cab05c958cc8)) - Mark S
+- **(compat)** derive `Debug` for `ConventionalCommitError` - ([a666bca](https://github.com/cocogitto/cocogitto/commit/a666bca040381f6a5994649d38848e822c625c26)) - Mark S
+- **(compat)** re-export `ConventionalCommitError` - ([2fe4d2c](https://github.com/cocogitto/cocogitto/commit/2fe4d2c55735d1281c6d16627766de3869118685)) - Mark S
+- add SanchithHegde to contributors list - ([36d1ea5](https://github.com/cocogitto/cocogitto/commit/36d1ea5d94d2785d5019702c3d51c734436ce3b9)) - [@SanchithHegde](https://github.com/SanchithHegde)
+- fix typo in comment - ([c981eb7](https://github.com/cocogitto/cocogitto/commit/c981eb7fb22e3c6d0a3726803c079a18cfe3750e)) - [@lukehsiao](https://github.com/lukehsiao)
+- update cocogitto-action - ([dc6cfa2](https://github.com/cocogitto/cocogitto/commit/dc6cfa21d1b0b63e91b9c7cf66e4725136e4bf05)) - [@oknozor](https://github.com/oknozor)
+- add commit-msg git-hook - ([64ddcf6](https://github.com/cocogitto/cocogitto/commit/64ddcf686aa553b35be08b99a1acae828befe6d6)) - [@oknozor](https://github.com/oknozor)
+#### Refactoring
+- **(revspec)** use git describe for finding latest tag - ([9a49999](https://github.com/cocogitto/cocogitto/commit/9a499990c66b4472d14a4a1e2f1ba9b6131d36ef)) - [@lukehsiao](https://github.com/lukehsiao)
+- **(revspec)** raise error instead of panicking when parsing `RevspecPattern` - ([71ee6c6](https://github.com/cocogitto/cocogitto/commit/71ee6c67fb170ec535ee18aefd51cf142fc19911)) - [@SanchithHegde](https://github.com/SanchithHegde)
+#### Style
+- rename 'Cog' to 'cog' internally - ([9b0830e](https://github.com/cocogitto/cocogitto/commit/9b0830ef456a2713e31934a304339d36231b1df0)) - [@tranzystorek-io](https://github.com/tranzystorek-io)
+
+- - -
+
+## [5.4.0](https://github.com/cocogitto/cocogitto/compare/5.3.1..5.4.0) - 2023-06-23
+#### Bug Fixes
+- **(bump)** bump don't throw error on no bump types commits - ([4a6a8b3](https://github.com/cocogitto/cocogitto/commit/4a6a8b30aa4e9eddfe1b0a3fe0c7fd822e767447)) - Wassim Ahmed-Belkacem
+- **(monorepo)** incorrect increment method used for package bumps - ([7bb3229](https://github.com/cocogitto/cocogitto/commit/7bb3229e356692dbf9eb932fdb5f42840414562e)) - [@oknozor](https://github.com/oknozor)
+#### Continuous Integration
+- **(formatting)** Apply cargo fmt - ([2710183](https://github.com/cocogitto/cocogitto/commit/2710183246d9f4bd43e3e6fa989f20f12cd57801)) - Mark S
+- **(tests)** Add `no_coverage` support when using `llvm-cov` on nightly - ([97fd420](https://github.com/cocogitto/cocogitto/commit/97fd4208fc1dc483decfec6bc3ace85dc954c30b)) - Mark S
+- remove android targets - ([1197d5f](https://github.com/cocogitto/cocogitto/commit/1197d5f98dc5e99f9bff82552b8dc813ab46ec33)) - [@oknozor](https://github.com/oknozor)
+#### Documentation
+- Update manpage generation docs - ([4a09837](https://github.com/cocogitto/cocogitto/commit/4a09837244e070ff6168cd247ed5621b41f4264e)) - [@tranzystorek-io](https://github.com/tranzystorek-io)
+#### Features
+- **(bump)** support annotated tags - ([363387d](https://github.com/cocogitto/cocogitto/commit/363387df62050d96bd2988a11e827cb720487395)) - [@bitfehler](https://github.com/bitfehler)
+- **(check)** allow running check on commit range - ([5168f75](https://github.com/cocogitto/cocogitto/commit/5168f75323ed14d34f497a7d14c7f2fa71db1693)) - Sanchith Hegde
+- **(cli)** add file parameter to verify command - ([5e02aef](https://github.com/cocogitto/cocogitto/commit/5e02aefc6a77302f6bbe505425f731ebbc5214c6)) - sebasnabas
+- **(cli)** Added get-version feature (#248) - ([5670cd8](https://github.com/cocogitto/cocogitto/commit/5670cd81a4127f2a125fde4b4eb9d38da3e121ed)) - [@andre161292](https://github.com/andre161292)
+- **(commit)** execute commit hooks when running `cog commit` - ([bf38fa6](https://github.com/cocogitto/cocogitto/commit/bf38fa6454d038c4d175943f7c47aeea2a433ec8)) - [@oknozor](https://github.com/oknozor)
+- **(monorepo)** add config opt to disable global global-tag-opt (#264) - ([96aa3b6](https://github.com/cocogitto/cocogitto/commit/96aa3b678845548cb50ef56c40948a86450d0ad0)) - [@oknozor](https://github.com/oknozor)
+- Add configurable changelog omission for custom commit types - ([88f8742](https://github.com/cocogitto/cocogitto/commit/88f874220e058709ad4a1f2f2c35eb4a0d67dc4c)) - Mark S
+- add custom git-hook installation - ([39cba74](https://github.com/cocogitto/cocogitto/commit/39cba74ba21c9679a03667e0fa8cbc6057bdf967)) - [@oknozor](https://github.com/oknozor)
+- reorganize manpages generation - ([1509583](https://github.com/cocogitto/cocogitto/commit/1509583ca058d8e43e4d02e603d10d13248723b0)) - [@tranzystorek-io](https://github.com/tranzystorek-io)
+- add {{package}} to hook version dsl - ([af08a7e](https://github.com/cocogitto/cocogitto/commit/af08a7e86c714fcdd0977d283d4887f3e98b6aa2)) - [@oknozor](https://github.com/oknozor)
+- add version_tag and latest_tag to hook version dsl - ([9eaee5a](https://github.com/cocogitto/cocogitto/commit/9eaee5abcc16bd8fa06c50b83e1892dde126f38f)) - [@oknozor](https://github.com/oknozor)
+#### Miscellaneous Chores
+- **(template)** remove deprecated usage of json_pointer - ([7266575](https://github.com/cocogitto/cocogitto/commit/72665753acb129d709df38f385aadef1b06e17b7)) - [@oknozor](https://github.com/oknozor)
+- bump clap to v4.2.4 for v1.69 clippy lints - ([3c259b6](https://github.com/cocogitto/cocogitto/commit/3c259b6345691d4aa37f38e61d85f6a0441563af)) - sebasnabas
+- fix clippy default impl for TemplateKind - ([808632a](https://github.com/cocogitto/cocogitto/commit/808632ae4405fec2e8365dfa89803a0e220cacd7)) - sebasnabas
+- rustfmt - ([c2e7ab0](https://github.com/cocogitto/cocogitto/commit/c2e7ab01d89cdf454028e53453fcce5c1f98bc0c)) - [@oknozor](https://github.com/oknozor)
+- add bitfehler to contributors list - ([b9d351d](https://github.com/cocogitto/cocogitto/commit/b9d351df3b69c77857b4a7ce1bf78c8f22b50b2e)) - [@oknozor](https://github.com/oknozor)
+- rename codesee token - ([0b82758](https://github.com/cocogitto/cocogitto/commit/0b82758078370786f032ff2ca6cfeaefc5e5a20a)) - [@oknozor](https://github.com/oknozor)
+- add codesee workflow - ([548c76e](https://github.com/cocogitto/cocogitto/commit/548c76ec764f633968b62ab6c115763a093bcaf6)) - [@oknozor](https://github.com/oknozor)
+#### Refactoring
+- **(cli)** adjust cog-verify args - ([8a12065](https://github.com/cocogitto/cocogitto/commit/8a120650dc3aeacf1c55e11429592074f19174ec)) - [@tranzystorek-io](https://github.com/tranzystorek-io)
+#### Revert
+- **(partial)** revert addition of 'no_coverage' support and attributes - ([93c9903](https://github.com/cocogitto/cocogitto/commit/93c990322cccb71f27cf97d6c6bfac70cfca613c)) - Mark S
+#### Style
+- remove unused `CommitConfig::{omit,include}` methods - ([3ad69eb](https://github.com/cocogitto/cocogitto/commit/3ad69ebd487968e17822442bb171476766184dff)) - Mark S
+#### Tests
+- **(check)** add CLI tests for running check on commit range - ([e276bfa](https://github.com/cocogitto/cocogitto/commit/e276bfaf60590f6fb8c3fa04227b76eba8c31c64)) - Sanchith Hegde
+- **(check)** add tests for running check on commit range - ([754e54d](https://github.com/cocogitto/cocogitto/commit/754e54d5904a487edf746271e997e983c33b4d08)) - Sanchith Hegde
+- **(ci)** add test for configurable changelog omission - ([c1b070c](https://github.com/cocogitto/cocogitto/commit/c1b070cffd0b7fe17c22f826c48c382dbcc69b80)) - Mark S
+- **(coverage)** add test for CommitConfig::{omit, include} methods - ([dd4461d](https://github.com/cocogitto/cocogitto/commit/dd4461db52f4e607d070c4c7e1dab53641f768af)) - Mark S
+- - -
+
 ## [5.3.1](https://github.com/cocogitto/cocogitto/compare/5.3.0..5.3.1) - 2023-01-23
 #### Bug Fixes
 - **(monorepo)** fix package tag parsing - ([cdff4a1](https://github.com/cocogitto/cocogitto/commit/cdff4a10332fb4caf4299f5f368e5a794f862228)) - [@oknozor](https://github.com/oknozor)
